@@ -1,0 +1,80 @@
+version: '3.8'
+
+# zECS Java Docker Compose 설정
+# Redis 와 zECS 애플리케이션을 함께 실행
+
+services:
+  # Redis 서버 (캐시 스토어)
+  redis:
+    image: redis:7-alpine
+    container_name: zecs-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - zecs-network
+
+  # zECS Java 애플리케이션
+  zecs-java:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: zecs-java
+    ports:
+      - "50100:50100"
+    environment:
+      # Redis 연결 설정
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      # zECS 설정
+      - ZECS_CACHE_DEFAULT_TTL=1800
+      - ZECS_CACHE_MAX_KEY_LENGTH=255
+      - ZECS_CACHE_MAX_VALUE_SIZE=3200000
+      - ZECS_SECURITY_ENABLED=true
+      - ZECS_ENVIRONMENT=DEV
+      - ZECS_ORGANIZATION=devops
+      - ZECS_APPLICATION_NAME=sessionData
+      # JVM 옵션
+      - JAVA_OPTS=-Xms512m -Xmx1024m -XX:+UseG1GC
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:50100/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks:
+      - zecs-network
+    restart: unless-stopped
+
+  # Redis Commander (Redis GUI - 선택사항)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: zecs-redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - zecs-network
+    profiles:
+      - dev
+
+networks:
+  zecs-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

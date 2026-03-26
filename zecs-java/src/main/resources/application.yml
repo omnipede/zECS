@@ -1,0 +1,84 @@
+server:
+  port: 50100
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: zecs-java
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+
+zecs:
+  # 캐시 설정
+  cache:
+    # 기본 TTL (초) - 기본값 1800(30 분)
+    default-ttl: 1800
+    # 최소 TTL (초) - 300(5 분)
+    min-ttl: 300
+    # 최대 TTL (초) - 86400(24 시간)
+    max-ttl: 86400
+    # 최대 키 길이 (바이트)
+    max-key-length: 255
+    # 최대 밸류 크기 (바이트) - 3.2MB
+    max-value-size: 3200000
+    # 세그먼트 크기 (바이트) - 대용량 데이터 분할 저장
+    segment-size: 32000
+
+  # 보안 설정
+  security:
+    enabled: false
+
+  # 복제 설정
+  replication:
+    # 복제 모드: A1(Standalone), AA(Active/Active), AS(Active/Standby)
+    mode: A1
+    enabled: false
+    # 파트너 데이터센터 설정
+    partner:
+      host: sysplex01-ecs.mycompany.com
+      port: 50102
+      scheme: http
+    # 복제 포트
+    port: 50102
+
+  # 만료 처리 설정
+  expiration:
+    # 만료 스캔 인터벌 (밀리초)
+    scan-interval: 1500
+    # 배치 삭제 크기
+    batch-size: 500
+    # 동기화 인터벌 (밀리초)
+    sync-interval: 1500
+
+  # 환경 설정
+  environment: DEV
+  organization: devops
+  application-name: sessionData
+
+# 로깅 설정
+logging:
+  level:
+    root: INFO
+    com.enterprise.zecs: DEBUG
+    org.springframework.data.redis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator 엔드포인트
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
